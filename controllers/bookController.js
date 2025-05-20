@@ -1,35 +1,55 @@
-const { response, request } =require("express");
-const books = [];
+const { response, request } = require("express");
+const Book = require("../schemas/book");
 
-exports.getAllBooks = (request, response) => {
-    response.send(books);
-};
-
-exports.createBook = (request, response) => {
-    console.log(request.body);
-    const book = request.body;
-    book.id = Date.now().toString();
-    books.push(book);
-    response.send(book);
-};
-
-exports.getBook = (request, response) => {
-    const bookId = request.params.id;
-    const book = books.find((book) => book.id === bookId)
-    response.send(book);
-};
-
-exports.updateBook = (request, response) => {
-    const index = books.findIndex((book) => book.id === request.params.id);
-    if (index !== -1) {
-        books[index] = { ...books[index], ...request.body };
-        response.send(books[index]);
+exports.getAllBooks = async (request, response) => {
+    try {
+        const books = await Book.find();
+        response.send(books);
+    } catch (error) {
+        response.status(500).send({ error: "Failed to fetch books" });
     }
 };
-exports.deleteBook = (request, response) => {
-    console.log("request params", request.params.id)
-    const booksIndex = books.findIndex(({ id }) => id === request.params.id);
-    if (booksIndex >= 0) {
-      books.splice(booksIndex, 1);
+
+exports.getBook = async (request, response) => {
+    try {
+        const book = await Book.findById(request.params.id);
+        if (!book) {
+            return response.status(404).send({ error: "Book not found" });
+        }
+        response.send(book);
+    } catch (error) {
+        response.status(500).send({ error: "Failed to fetch book" });
     }
-  };
+};
+
+exports.createBook = async (request, response) => {
+    try {
+        const book = new Book(request.body);
+        await book.save();
+        response.send(book);
+    } catch (error) {
+        response.status(500).send({ error: "Failed to add book" });
+    }
+};
+
+exports.updateBook = async (request, response) => {
+    try {
+        const book = await Book.findByIdAndUpdate(request.params.id, request.body, {
+            new: true,
+        });
+        response.send(book);
+    } catch (error) {
+        response.status(500).send({ error: "Failed to update book" });
+    }
+};
+
+
+exports.deleteBook = async (request, response) => {
+  try {
+    const book = await Book.findById(request.params.id)
+    const deleteBook = await Book.deleteOne(book);
+    response.send(book);
+  } catch (error) {
+    response.status(500).send({ error: "Failed to delete book" });
+  }
+};
